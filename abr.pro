@@ -28,7 +28,8 @@ SOURCES += \
     lineage/player.cpp \
     utils.cpp \
     lineage/mob.cpp \
-    lineage/instance.cpp
+    lineage/instance.cpp \
+    lineage/droppeditem.cpp
 
 HEADERS += \
         abr.h \
@@ -36,7 +37,8 @@ HEADERS += \
     lineage/player.h \
     utils.h \
     lineage/mob.h \
-    lineage/instance.h
+    lineage/instance.h \
+    lineage/droppeditem.h
 
 unix {
     target.path = /usr/lib

@@ -1,4 +1,5 @@
 #include "mob.h"
+#include "lineage/lineageglobal.h"
 
 #define HP_OFFSET 0xB4
 #define MAX_HP_OFFSET 0xB0
@@ -86,6 +87,22 @@ bool Mob::isNPC() const
     return *reinterpret_cast<bool*>(_address + IS_NPC_OFFSET);
 }
 
+bool Mob::isDead(DWORD address)
+{
+    Mob mob(address);
+    if(mob.getModelAddress() == 0)
+        return true;
+    if(mob.getHP() == 0)
+        return true;
+    return false;
+}
+
+bool Mob::isFocused(DWORD address)
+{
+    Mob mob(address);
+    return mob.getModelAddress() == *LineageGlobal::getPlayerTargetModelPointer();
+}
+
 void Mob::makeRepresentation(MobRepresentation &mobRep)
 {
     memcpy(mobRep.name, getName(), 60);
@@ -93,6 +110,7 @@ void Mob::makeRepresentation(MobRepresentation &mobRep)
     mobRep.x = getLoc()->x;
     mobRep.y = getLoc()->y;
     mobRep.z = getLoc()->z;
+    mobRep.address = _address;
     mobRep.hp = getHP();
     mobRep.id = getID();
     mobRep.maxHp = getMaxHP();
@@ -138,5 +156,5 @@ bool Mob::isValid() const
 
 bool Mob::isDead() const
 {
-    return getHP() == 0 ? true : false;
+    return Mob::isDead(address());
 }

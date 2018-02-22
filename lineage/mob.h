@@ -32,6 +32,8 @@ public:
     bool isPet() const;
     bool isNPC() const;
 
+    static bool isDead(DWORD address);
+    static bool isFocused(DWORD address);
 
     void makeRepresentation(MobRepresentation &mobRep);
 };

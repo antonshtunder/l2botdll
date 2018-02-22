@@ -29,4 +29,7 @@ void Player::makeRepresentation(CharacterRepresentation &charRep)
     charRep.x = getLoc()->x;
     charRep.y = getLoc()->y;
     charRep.z = getLoc()->z;
+    charRep.address = address();
+    charRep.hp = 5;
+    charRep.mp = 5;
 }
