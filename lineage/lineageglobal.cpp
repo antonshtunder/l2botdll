@@ -30,7 +30,7 @@ LineageGlobal::LineageGlobal()
                 *reinterpret_cast<LPDWORD>(0x19F020) + 0x68);
 
     BYTE skillInvBytes[] = {0x01, 0x00, 0x00, 0x00, 0x21, 0x00, 0x00, 0x00, 0x53, 0x00, 0x6B, 0x00, 0x69, 0x00, 0x6C, 0x00, 0x6C, 0x00, 0x00, 0x00};
-    _skillsInventoryBase = findByteSequence(skillInvBytes, sizeof(skillInvBytes), 0x20000000, 0x40000000);
+    _sibBase = findByteSequence(skillInvBytes, sizeof(skillInvBytes), 0x20000000, 0x40000000);
 }
 
 LineageGlobal *LineageGlobal::instance()
@@ -67,11 +67,7 @@ bool LineageGlobal::isAddressInArray(DWORD address)
     {
         startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
 
-        if(startId < 0x10000000 || startId > 0x20000000)
-            break;
-        startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
-
-        if(startId < 0x10000000 || startId > 0x20000000)
+        if(startId < 0x10000000 || startId > 0x40000000)
             break;
 
         array = *reinterpret_cast<LPDWORD>(arrays + 8 + i * 12);
@@ -120,10 +116,13 @@ std::vector<Mob> &LineageGlobal::getMobs()
     {
         startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
 
-        if(startId < 0x10000000 || startId > 0x20000000)
+        if(startId < 0x10000000 || startId > 0x40000000)
             break;
 
         array = *reinterpret_cast<LPDWORD>(arrays + 8 + i * 12);
+        if(array < 0x20000 || array > 0x7fffffff)
+            break;
+
         int j = 0;
         while(true)
         {
@@ -143,7 +142,7 @@ std::vector<Mob> &LineageGlobal::getMobs()
             }
 
             mobAddress = *reinterpret_cast<LPDWORD>(array + 4 + j * 8);
-            if(mobAddress != 0)
+            if(mobAddress > 0x20000 && mobAddress < 0x7fffffff)
             {
                 mobAddresses.insert(mobAddress);
             }
@@ -174,10 +173,13 @@ std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
     {
         startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
 
-        if(startId < 0x10000000 || startId > 0x20000000)
+        if(startId < 0x10000000 || startId > 0x40000000)
             break;
 
         array = *reinterpret_cast<LPDWORD>(arrays + 8 + i * 12);
+        if(array < 0x20000 || array > 0x7fffffff)
+            break;
+
         int j = 0;
         while(true)
         {
@@ -283,4 +285,9 @@ DWORD LineageGlobal::getADDR1()
 void LineageGlobal::doAction(DWORD actionID)
 {
     _doAction(actionID, getADDR1(), 0, 0);
+}
+
+DWORD LineageGlobal::getSibBase() const
+{
+    return _sibBase;
 }

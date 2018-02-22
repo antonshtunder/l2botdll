@@ -29,7 +29,12 @@ SOURCES += \
     utils.cpp \
     lineage/mob.cpp \
     lineage/instance.cpp \
-    lineage/droppeditem.cpp
+    lineage/droppeditem.cpp \
+    lineage/inventory.cpp \
+    lineage/skilllist.cpp \
+    lineage/skill.cpp \
+    lineage/inventoryitem.cpp \
+    lineage/effectlist.cpp
 
 HEADERS += \
         abr.h \
@@ -38,7 +43,12 @@ HEADERS += \
     utils.h \
     lineage/mob.h \
     lineage/instance.h \
-    lineage/droppeditem.h
+    lineage/droppeditem.h \
+    lineage/inventory.h \
+    lineage/skilllist.h \
+    lineage/skill.h \
+    lineage/inventoryitem.h \
+    lineage/effectlist.h
 
 unix {
     target.path = /usr/lib

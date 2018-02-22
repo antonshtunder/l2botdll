@@ -71,6 +71,10 @@ void dispatchCommandMessage(HANDLE pipe, BYTE *message)
     auto l2 = LineageGlobal::instance();
     switch(command)
     {
+    case l2ipc::Command::DO_ACTION:
+        l2->doAction(*reinterpret_cast<LPDWORD>(message + sizeof(l2ipc::Command)));
+        l2ipc::sendReply(pipe, true);
+        break;
     case l2ipc::Command::ATTACK:
         l2->attack();
         l2ipc::sendReply(pipe, true);
@@ -124,12 +128,12 @@ bool pickUpItem(DWORD itemAddress)
     while(l2->isAddressInArray(itemAddress))
     {
         Sleep(150);
-        if(getMilliSpan(actionTime) > 400)
+        if(getMilliSpan(actionTime) > 700)
         {
             l2->performActionOn(item.getID());
             actionTime = getMilliCount();
         }
-        if(getMilliSpan(startTime) > 2500)
+        if(getMilliSpan(startTime) > 2000)
             return false;
     }
     return true;

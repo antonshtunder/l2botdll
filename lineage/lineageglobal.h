@@ -24,22 +24,24 @@ public:
     std::vector<Mob> &getMobs();
     std::vector<DroppedItem> &getDroppedItems();
 
+    void doAction(DWORD actionID);
     void attack();
     void performActionOn(DWORD instanceID);
     void focusMob(DWORD address);
 
     LineageRepresentation getRepresentation();
+    DWORD getSibBase() const;
+
 private:
     DWORD getArraysAddress();
     DWORD getADDR1();
 
-    void doAction(DWORD actionID);
 
     static LineageGlobal *_instance;
     static DWORD doActionOnInstanceFunction;
     static DWORD doActionOnInstanceECXArgument;
 
-    DWORD _skillsInventoryBase;
+    DWORD _sibBase;
 
     std::vector<Mob> _mobs;
     std::vector<DroppedItem> _droppedItems;
