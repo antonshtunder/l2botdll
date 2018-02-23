@@ -1,5 +1,6 @@
 #include "mob.h"
 #include "lineage/lineageglobal.h"
+#include "utils.h"
 
 #define HP_OFFSET 0xB4
 #define MAX_HP_OFFSET 0xB0
@@ -137,6 +138,9 @@ bool Mob::isMonster() const
 bool Mob::isValid() const
 {
     if(_address == 0)
+        return false;
+
+    if(!checkAddress(_address))
         return false;
 
     if(*reinterpret_cast<LPDWORD>(_address) != 0)

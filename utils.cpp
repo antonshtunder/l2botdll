@@ -26,3 +26,13 @@ int getRandom(int min, int max)
 {
     return min + (rand() % (max - min));
 }
+
+bool checkAddress(DWORD address)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    VirtualQuery(reinterpret_cast<LPCVOID>(address), &mbi, sizeof(mbi));
+    if(mbi.State != MEM_COMMIT)
+        return false;
+    else
+        return true;
+}

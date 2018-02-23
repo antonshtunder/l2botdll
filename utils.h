@@ -20,5 +20,7 @@ int getMilliSpan(int nTimeStart);
 
 int getRandom(int min, int max);
 
+bool checkAddress(DWORD address);
+
 
 #endif // UTILS_H

@@ -18,7 +18,7 @@ public:
     static LPDWORD getPlayerTargetModelPointer();
 
     bool isInGame();
-    bool isAddressInArray(DWORD address);
+    bool isDroppedItemPresent(DWORD address);
 
     Player getPlayer();
     std::vector<Mob> &getMobs();
@@ -32,14 +32,20 @@ public:
     LineageRepresentation getRepresentation();
     DWORD getSibBase() const;
 
+    void lockArrays();
+    void unlockArrays();
+
 private:
     DWORD getArraysAddress();
+    DWORD getArraysNum();
     DWORD getADDR1();
 
 
     static LineageGlobal *_instance;
     static DWORD doActionOnInstanceFunction;
     static DWORD doActionOnInstanceECXArgument;
+
+    HANDLE _arraysMutex;
 
     DWORD _sibBase;
 

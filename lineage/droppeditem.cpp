@@ -33,6 +33,9 @@ Point3F *DroppedItem::getLoc()
 
 bool DroppedItem::isValid(DWORD address)
 {
+    if(!checkAddress(address))
+        return false;
+
     DroppedItem item(address);
     return (item.getID() > 0x10000000 && item.getID() < 0x20000000 &&
             item.getModel() > 0x10000 &&

@@ -3,6 +3,8 @@
 #include "lineageipc.h"
 #include "lineage/lineageglobal.h"
 #include "utils.h"
+#include "ipc.h"
+#include "synchronization.h"
 #include <ctime>
 
 #pragma comment(lib, "Kernel32.lib")
@@ -15,53 +17,11 @@ static BYTE* sharedMemoryData;
 
 DLL_DEFAULT_ENTRY(entry);
 
-DWORD CALLBACK commandPipeLoop(LPVOID pipe)
-{
-    BYTE buffer[256];
-    while(true)
-    {
-        if(ReadFile(pipe, buffer, sizeof(buffer), NULL, NULL))
-        {
-            dispatchCommandMessage(pipe, buffer);
-        }
-        else
-        {
-            //alert("fail");
-        }
-    }
-}
-
-DWORD CALLBACK dataPipeLoop(LPVOID pipe)
-{
-    BYTE buffer[256];
-    while(true)
-    {
-        if(ReadFile(pipe, buffer, sizeof(buffer), NULL, NULL))
-        {
-            dispatchDataMessage(pipe, buffer);
-        }
-        else
-        {
-            //alert("fail");
-        }
-    }
-}
-
 void entry()
 {
     srand(time(NULL));
-
-    auto pipe = l2ipc::connectToCommandPipe();
-    if(pipe == INVALID_HANDLE_VALUE)
-    {
-        alert(itoa(GetLastError(), buffer, 10));
-    }
-    auto thread = CreateThread(NULL, 0, commandPipeLoop, pipe, 0, NULL);
-    CloseHandle(thread);
-
-    pipe = l2ipc::connectToDataManagmentPipe();
-    thread = CreateThread(NULL, 0, dataPipeLoop, pipe, 0, NULL);
-    CloseHandle(thread);
+    syncWithMainLoop();
+    initPipes();
 }
 
 
@@ -125,7 +85,7 @@ bool pickUpItem(DWORD itemAddress)
     auto startTime = getMilliCount();
     auto actionTime = getMilliCount();
     l2->performActionOn(item.getID());
-    while(l2->isAddressInArray(itemAddress))
+    while(l2->isDroppedItemPresent(item.address()))
     {
         Sleep(150);
         if(getMilliSpan(actionTime) > 700)

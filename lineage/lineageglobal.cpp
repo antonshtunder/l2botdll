@@ -21,6 +21,7 @@ DWORD LineageGlobal::doActionOnInstanceECXArgument = 0;
 
 LineageGlobal::LineageGlobal()
 {
+    _arraysMutex = CreateMutex(NULL, FALSE, NULL);
     _doAction = reinterpret_cast<FDoAction>(
                     *reinterpret_cast<LPDWORD>(
                         *reinterpret_cast<LPDWORD>(CO1)+ 0x718A0) + 0x512F60);
@@ -55,45 +56,19 @@ bool LineageGlobal::isInGame()
     return (indicator == 0) ? false : true;
 }
 
-bool LineageGlobal::isAddressInArray(DWORD address)
+bool LineageGlobal::isDroppedItemPresent(DWORD address)
 {
-    DWORD arrays = getArraysAddress();
-    if(arrays == 0)
-        return false;
-
-    int i = 0;
-    DWORD startId, array, indicator, foundAddress;
-    while(true)
+    auto items = getDroppedItems();
+    lockArrays();
+    for(auto item : _droppedItems)
     {
-        startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
-
-        if(startId < 0x10000000 || startId > 0x40000000)
-            break;
-
-        array = *reinterpret_cast<LPDWORD>(arrays + 8 + i * 12);
-        int j = 0;
-        while(true)
+        if(item.address() == address)
         {
-            indicator = *reinterpret_cast<LPDWORD>(array + j * 8);
-
-            if(indicator != 1 && indicator != 2)
-                break;
-
-
-            foundAddress = *reinterpret_cast<LPDWORD>(array + 4 + j * 8);
-            if(foundAddress == 0)
-            {
-                break;
-            }
-            else if(foundAddress == address)
-            {
-                return true;
-            }
-            ++j;
+            unlockArrays();
+            return true;
         }
-
-        ++i;
     }
+    unlockArrays();
     return false;
 }
 
@@ -104,75 +79,79 @@ Player LineageGlobal::getPlayer()
 
 std::vector<Mob> &LineageGlobal::getMobs()
 {
+    lockArrays();
     set<DWORD> mobAddresses;
     _mobs.clear();
 
     DWORD arrays = getArraysAddress();
-    if(arrays == 0)
+    if(arrays < 0x20000)
         return _mobs;
+
     int i = 0;
-    DWORD startId, array, mobIndicator, mobAddress;
+    DWORD array, arrayIndicator, startId, indicator, address;
     while(true)
     {
-        startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
+        arrayIndicator = *reinterpret_cast<LPDWORD>(arrays + i * 12);
+        if(arrayIndicator > 0x1000 && arrayIndicator != 0xFFFFFFFF)
+            break;
 
+        startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
         if(startId < 0x10000000 || startId > 0x40000000)
             break;
 
         array = *reinterpret_cast<LPDWORD>(arrays + 8 + i * 12);
-        if(array < 0x20000 || array > 0x7fffffff)
+        if(array < 0x20000 || array > 0x40000000)
             break;
 
         int j = 0;
         while(true)
         {
-            mobIndicator = *reinterpret_cast<LPDWORD>(array + j * 8);
-
-            if(mobIndicator != 1)
+            address = *reinterpret_cast<LPDWORD>(array + 4 + j * 8);
+            if(address > 0x20000 && address < 0x40000000)
             {
-                if(mobIndicator == 2)
+                indicator = *reinterpret_cast<LPDWORD>(array + j * 8);
+                ++j;
+                if(indicator == 1)
                 {
-                    ++j;
+                    mobAddresses.insert(address);
+                }
+                else if(indicator == 2)
                     continue;
-                }
                 else
-                {
                     break;
-                }
             }
-
-            mobAddress = *reinterpret_cast<LPDWORD>(array + 4 + j * 8);
-            if(mobAddress > 0x20000 && mobAddress < 0x7fffffff)
-            {
-                mobAddresses.insert(mobAddress);
-            }
-            ++j;
+            else
+                break;
         }
-
         ++i;
     }
-    for(auto begin = mobAddresses.cbegin(); begin != mobAddresses.end(); ++begin)
+    for(auto mob : mobAddresses)
     {
-        _mobs.push_back(Mob(*begin));
+        _mobs.push_back(Mob(mob));
     }
+    unlockArrays();
     return _mobs;
 }
 
 std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
 {
-    set<DWORD> itemAddresses;
+    lockArrays();
+    set<DWORD> dropppedItemAddresses;
     _droppedItems.clear();
 
     DWORD arrays = getArraysAddress();
-    if(arrays == 0)
-        return _droppedItems;
+    if(arrays < 0x20000)
+        return _droppedItems;;
 
     int i = 0;
-    DWORD startId, array, itemIndicator, itemAddress;
+    DWORD array, arrayIndicator, startId, indicator, address;
     while(true)
     {
-        startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
+        arrayIndicator = *reinterpret_cast<LPDWORD>(arrays + i * 12);
+        if(arrayIndicator > 0x1000 && arrayIndicator != 0xFFFFFFFF)
+            break;
 
+        startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
         if(startId < 0x10000000 || startId > 0x40000000)
             break;
 
@@ -180,39 +159,33 @@ std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
         if(array < 0x20000 || array > 0x7fffffff)
             break;
 
+
         int j = 0;
         while(true)
         {
-            itemIndicator = *reinterpret_cast<LPDWORD>(array + j * 8);
-            if(itemIndicator != 2)
+            address = *reinterpret_cast<LPDWORD>(array + 4 + j * 8);
+            if(address > 0x20000 && address < 0x7fffffff)
             {
-                if(itemIndicator == 1)
+                indicator = *reinterpret_cast<LPDWORD>(array + j * 8);
+                ++j;
+                if(indicator == 2)
                 {
-                    ++j;
-                    continue;
+                    dropppedItemAddresses.insert(address);
                 }
+                else if(indicator == 1)
+                    continue;
                 else
-                {
                     break;
-                }
             }
-
-            itemAddress = *reinterpret_cast<LPDWORD>(array + 4 + j * 8);
-            ++j;
-            if(itemAddress != 0)
-            {
-                if(!DroppedItem::isValid(itemAddress))
-                    continue;
-                itemAddresses.insert(itemAddress);
-            }
+            else break;
         }
-
         ++i;
     }
-    for(auto begin = itemAddresses.cbegin(); begin != itemAddresses.end(); ++begin)
+    for(auto item : dropppedItemAddresses)
     {
-        _droppedItems.push_back(DroppedItem(*begin));
+        _droppedItems.push_back(DroppedItem(item));
     }
+    unlockArrays();
     return _droppedItems;
 }
 
@@ -254,18 +227,22 @@ LineageRepresentation LineageGlobal::getRepresentation()
     getPlayer().makeRepresentation(representation.character);
     for(auto mob : getMobs())
     {
+        lockArrays();
         if(!mob.isValid())
             continue;
         mob.makeRepresentation(mobRep);
         representation.mobs.push_back(mobRep);
+        unlockArrays();
     }
 
     for(auto item : getDroppedItems())
     {
+        lockArrays();
         if(!item.isValid())
             continue;
         item.makeRepresentation(itemRep);
         representation.droppedItems.push_back(itemRep);
+        unlockArrays();
     }
     return representation;
 }
@@ -277,9 +254,26 @@ DWORD LineageGlobal::getArraysAddress()
     return *reinterpret_cast<LPDWORD>(second + 0x224);
 }
 
+DWORD LineageGlobal::getArraysNum()
+{
+    DWORD first = *reinterpret_cast<LPDWORD>(THREADSTACK0-0x00000F6C);
+    DWORD second = *reinterpret_cast<LPDWORD>(first + 0x68);
+    return second + 0x228;
+}
+
 DWORD LineageGlobal::getADDR1()
 {
     return *reinterpret_cast<LPDWORD>(0x208C53E8);
+}
+
+void LineageGlobal::lockArrays()
+{
+    WaitForSingleObject(_arraysMutex, INFINITE);
+}
+
+void LineageGlobal::unlockArrays()
+{
+    ReleaseMutex(_arraysMutex);
 }
 
 void LineageGlobal::doAction(DWORD actionID)

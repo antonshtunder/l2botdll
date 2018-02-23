@@ -34,7 +34,9 @@ SOURCES += \
     lineage/skilllist.cpp \
     lineage/skill.cpp \
     lineage/inventoryitem.cpp \
-    lineage/effectlist.cpp
+    lineage/effectlist.cpp \
+    ipc.cpp \
+    synchronization.cpp
 
 HEADERS += \
         abr.h \
@@ -48,7 +50,9 @@ HEADERS += \
     lineage/skilllist.h \
     lineage/skill.h \
     lineage/inventoryitem.h \
-    lineage/effectlist.h
+    lineage/effectlist.h \
+    ipc.h \
+    synchronization.h
 
 unix {
     target.path = /usr/lib
