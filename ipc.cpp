@@ -1,6 +1,7 @@
 #include "abr.h"
 #include "ipc.h"
-
+#include "dllhacklibrary.h"
+using namespace dhl;
 DWORD CALLBACK commandPipeLoop(LPVOID pipe)
 {
     BYTE buffer[256];
@@ -13,6 +14,12 @@ DWORD CALLBACK commandPipeLoop(LPVOID pipe)
         else
         {
             //alert("fail");
+            auto dll = GetModuleHandle(L"abr.dll");
+            if(dll != NULL)
+            {
+                FreeLibraryAndExitThread(dll, 1);
+            }
+            return 1;
         }
     }
 }
@@ -29,6 +36,12 @@ DWORD CALLBACK dataPipeLoop(LPVOID pipe)
         else
         {
             //alert("fail");
+            auto dll = GetModuleHandle(L"abr.dll");
+            if(dll != NULL)
+            {
+                FreeLibraryAndExitThread(dll, 1);
+            }
+            return 1;
         }
     }
 }

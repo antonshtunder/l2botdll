@@ -37,7 +37,7 @@ bool DroppedItem::isValid(DWORD address)
         return false;
 
     DroppedItem item(address);
-    return (item.getID() > 0x10000000 && item.getID() < 0x20000000 &&
+    return (item.getID() > 0x10000000 &&
             item.getModel() > 0x10000 &&
             (*reinterpret_cast<LPDWORD>(address + 0x18) == 0) &&
             (*reinterpret_cast<LPDWORD>(address + 0x10) == 0))

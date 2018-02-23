@@ -88,26 +88,18 @@ std::vector<Mob> &LineageGlobal::getMobs()
         return _mobs;
 
     int i = 0;
-    DWORD array, arrayIndicator, startId, indicator, address;
-    while(true)
+    DWORD array, indicator, address;
+    DWORD max = getArraysNum();
+    for(DWORD i = 0; i < max; ++i)
     {
-        arrayIndicator = *reinterpret_cast<LPDWORD>(arrays + i * 12);
-        if(arrayIndicator > 0x1000 && arrayIndicator != 0xFFFFFFFF)
-            break;
-
-        startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
-        if(startId < 0x10000000 || startId > 0x40000000)
-            break;
-
         array = *reinterpret_cast<LPDWORD>(arrays + 8 + i * 12);
-        if(array < 0x20000 || array > 0x40000000)
+        if(!checkAddress(array))
             break;
-
         int j = 0;
         while(true)
         {
             address = *reinterpret_cast<LPDWORD>(array + 4 + j * 8);
-            if(address > 0x20000 && address < 0x40000000)
+            if(address > 0x20000)
             {
                 indicator = *reinterpret_cast<LPDWORD>(array + j * 8);
                 ++j;
@@ -115,15 +107,18 @@ std::vector<Mob> &LineageGlobal::getMobs()
                 {
                     mobAddresses.insert(address);
                 }
-                else if(indicator == 2)
-                    continue;
                 else
                     break;
             }
             else
                 break;
         }
-        ++i;
+        if(max != getArraysNum())
+        {
+            i = 0;
+            mobAddresses.clear();
+            max = getArraysNum();
+        }
     }
     for(auto mob : mobAddresses)
     {
@@ -144,27 +139,18 @@ std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
         return _droppedItems;;
 
     int i = 0;
-    DWORD array, arrayIndicator, startId, indicator, address;
-    while(true)
+    DWORD array, indicator, address;
+    DWORD max = getArraysNum();
+    for(DWORD i = 0; i < max; ++i)
     {
-        arrayIndicator = *reinterpret_cast<LPDWORD>(arrays + i * 12);
-        if(arrayIndicator > 0x1000 && arrayIndicator != 0xFFFFFFFF)
-            break;
-
-        startId = *reinterpret_cast<LPDWORD>(arrays + 4 + i * 12);
-        if(startId < 0x10000000 || startId > 0x40000000)
-            break;
-
         array = *reinterpret_cast<LPDWORD>(arrays + 8 + i * 12);
-        if(array < 0x20000 || array > 0x7fffffff)
+        if(!checkAddress(array))
             break;
-
-
         int j = 0;
         while(true)
         {
             address = *reinterpret_cast<LPDWORD>(array + 4 + j * 8);
-            if(address > 0x20000 && address < 0x7fffffff)
+            if(address > 0x20000)
             {
                 indicator = *reinterpret_cast<LPDWORD>(array + j * 8);
                 ++j;
@@ -172,14 +158,18 @@ std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
                 {
                     dropppedItemAddresses.insert(address);
                 }
-                else if(indicator == 1)
-                    continue;
                 else
                     break;
             }
-            else break;
+            else
+                break;
         }
-        ++i;
+        if(max != getArraysNum())
+        {
+            i = 0;
+            dropppedItemAddresses.clear();
+            max = getArraysNum();
+        }
     }
     for(auto item : dropppedItemAddresses)
     {
@@ -217,6 +207,7 @@ void LineageGlobal::focusMob(DWORD address)
 {
     Mob mob(address);
     *getPlayerTargetModelPointer() = mob.getModelAddress();
+    performActionOn(mob.getID());
 }
 
 LineageRepresentation LineageGlobal::getRepresentation()
@@ -258,7 +249,7 @@ DWORD LineageGlobal::getArraysNum()
 {
     DWORD first = *reinterpret_cast<LPDWORD>(THREADSTACK0-0x00000F6C);
     DWORD second = *reinterpret_cast<LPDWORD>(first + 0x68);
-    return second + 0x228;
+    return *reinterpret_cast<LPDWORD>(second + 0x228);
 }
 
 DWORD LineageGlobal::getADDR1()

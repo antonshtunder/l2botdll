@@ -149,7 +149,7 @@ bool Mob::isValid() const
     if(*reinterpret_cast<LPDWORD>(_address + 4) != 0)
         return false;
 
-    if(getID() < 0x10000000 || getID() > 0x20000000)
+    if(getID() < 0x10000000)
         return false;
 
     if(getModelAddress() == 0)
