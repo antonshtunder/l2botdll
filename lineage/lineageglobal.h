@@ -5,6 +5,7 @@
 #include "mob.h"
 #include "lineagerepresentation.h"
 #include "droppeditem.h"
+#include "skill.h"
 
 typedef void (__fastcall *FDoAction)(DWORD actionID, DWORD someAddr, DWORD zero1, DWORD zero2);
 

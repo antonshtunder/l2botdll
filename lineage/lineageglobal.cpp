@@ -59,16 +59,16 @@ bool LineageGlobal::isInGame()
 bool LineageGlobal::isDroppedItemPresent(DWORD address)
 {
     auto items = getDroppedItems();
-    lockArrays();
+    //lockArrays();
     for(auto item : _droppedItems)
     {
         if(item.address() == address)
         {
-            unlockArrays();
+            //unlockArrays();
             return true;
         }
     }
-    unlockArrays();
+    //unlockArrays();
     return false;
 }
 
@@ -79,7 +79,7 @@ Player LineageGlobal::getPlayer()
 
 std::vector<Mob> &LineageGlobal::getMobs()
 {
-    lockArrays();
+    //lockArrays();
     set<DWORD> mobAddresses;
     _mobs.clear();
 
@@ -113,7 +113,7 @@ std::vector<Mob> &LineageGlobal::getMobs()
             else
                 break;
         }
-        if(max != getArraysNum())
+        if(max != getArraysNum() || i >= max)
         {
             i = 0;
             mobAddresses.clear();
@@ -124,13 +124,13 @@ std::vector<Mob> &LineageGlobal::getMobs()
     {
         _mobs.push_back(Mob(mob));
     }
-    unlockArrays();
+    //unlockArrays();
     return _mobs;
 }
 
 std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
 {
-    lockArrays();
+    //lockArrays();
     set<DWORD> dropppedItemAddresses;
     _droppedItems.clear();
 
@@ -164,7 +164,7 @@ std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
             else
                 break;
         }
-        if(max != getArraysNum())
+        if(max != getArraysNum() || i >= max)
         {
             i = 0;
             dropppedItemAddresses.clear();
@@ -175,7 +175,7 @@ std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
     {
         _droppedItems.push_back(DroppedItem(item));
     }
-    unlockArrays();
+    //unlockArrays();
     return _droppedItems;
 }
 
@@ -215,25 +215,34 @@ LineageRepresentation LineageGlobal::getRepresentation()
     LineageRepresentation representation;
     MobRepresentation mobRep;
     DroppedItemRepresentation itemRep;
+    SkillRepresentation skillRep;
     getPlayer().makeRepresentation(representation.character);
     for(auto mob : getMobs())
     {
-        lockArrays();
         if(!mob.isValid())
             continue;
         mob.makeRepresentation(mobRep);
         representation.mobs.push_back(mobRep);
-        unlockArrays();
     }
 
     for(auto item : getDroppedItems())
     {
-        lockArrays();
         if(!item.isValid())
             continue;
         item.makeRepresentation(itemRep);
         representation.droppedItems.push_back(itemRep);
-        unlockArrays();
+    }
+
+    for(auto skill : Skill::getActiveSkills())
+    {
+        skill.makeRepresentation(skillRep);
+        representation.activeSkills.push_back(skillRep);
+    }
+
+    for(auto skill : Skill::getPassiveSkills())
+    {
+        skill.makeRepresentation(skillRep);
+        representation.passiveSkills.push_back(skillRep);
     }
     return representation;
 }

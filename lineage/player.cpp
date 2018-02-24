@@ -1,5 +1,5 @@
 #include "player.h"
-
+#include "lineageglobal.h"
 
 DWORD Player::address() const
 {
@@ -30,6 +30,7 @@ void Player::makeRepresentation(CharacterRepresentation &charRep)
     charRep.y = getLoc()->y;
     charRep.z = getLoc()->z;
     charRep.address = address();
+    charRep.targetModelAddress = *LineageGlobal::getPlayerTargetModelPointer();
     charRep.hp = 5;
     charRep.mp = 5;
 }
