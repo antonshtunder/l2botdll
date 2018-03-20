@@ -2,6 +2,10 @@
 #include "ipc.h"
 #include "dllhacklibrary.h"
 using namespace dhl;
+
+static DWORD commandThread;
+static DWORD dataThread;
+
 DWORD CALLBACK commandPipeLoop(LPVOID pipe)
 {
     BYTE buffer[256];
@@ -14,11 +18,7 @@ DWORD CALLBACK commandPipeLoop(LPVOID pipe)
         else
         {
             //alert("fail");
-            auto dll = GetModuleHandle(L"abr.dll");
-            if(dll != NULL)
-            {
-                FreeLibraryAndExitThread(dll, 1);
-            }
+            detach();
             return 1;
         }
     }
@@ -36,11 +36,7 @@ DWORD CALLBACK dataPipeLoop(LPVOID pipe)
         else
         {
             //alert("fail");
-            auto dll = GetModuleHandle(L"abr.dll");
-            if(dll != NULL)
-            {
-                FreeLibraryAndExitThread(dll, 1);
-            }
+            detach();
             return 1;
         }
     }
@@ -48,10 +44,10 @@ DWORD CALLBACK dataPipeLoop(LPVOID pipe)
 void initPipes()
 {
     auto pipe = l2ipc::connectToCommandPipe();
-    auto thread = CreateThread(NULL, 0, commandPipeLoop, pipe, 0, NULL);
+    auto thread = CreateThread(NULL, 0, commandPipeLoop, pipe, 0, &commandThread);
     CloseHandle(thread);
 
     pipe = l2ipc::connectToDataManagmentPipe();
-    thread = CreateThread(NULL, 0, dataPipeLoop, pipe, 0, NULL);
+    thread = CreateThread(NULL, 0, dataPipeLoop, pipe, 0, &dataThread);
     CloseHandle(thread);
 }

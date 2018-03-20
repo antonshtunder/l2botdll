@@ -68,6 +68,21 @@ DWORD Mob::getModelAddress() const
     return *reinterpret_cast<LPDWORD>(_address + MODEL_ADDRESS_OFFSET);
 }
 
+DWORD Mob::getTargetModelAddress() const
+{
+    return *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(getModelAddress() + 0x3C) + 0x450);
+}
+
+DWORD Mob::getAttackingAddress() const
+{
+    return *reinterpret_cast<LPDWORD>(getModelAddress() + 0x74C);
+}
+
+void Mob::setAddress(DWORD newAddress)
+{
+    _address = newAddress;
+}
+
 bool Mob::isQuestMonster() const
 {
     return getTitleColor() == 0xFFFF8000;
@@ -90,11 +105,14 @@ bool Mob::isNPC() const
 
 bool Mob::isDead(DWORD address)
 {
+    if(address == 0)
+        return true;
     Mob mob(address);
     if(mob.getModelAddress() == 0)
         return true;
-    if(mob.getHP() == 0)
+    if(mob.getHP() <= 0)
         return true;
+
     return false;
 }
 
@@ -112,6 +130,9 @@ void Mob::makeRepresentation(MobRepresentation &mobRep)
     mobRep.y = getLoc()->y;
     mobRep.z = getLoc()->z;
     mobRep.address = _address;
+    mobRep.modelAddress = getModelAddress();
+    mobRep.targetModelAddress = getTargetModelAddress();
+    mobRep.attackingModelAddress = getAttackingAddress();
     mobRep.hp = getHP();
     mobRep.id = getID();
     mobRep.maxHp = getMaxHP();

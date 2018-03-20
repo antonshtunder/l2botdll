@@ -30,15 +30,16 @@ void Skill::makeRepresentation(SkillRepresentation &skillRep)
 
 std::vector<Skill> &Skill::getActiveSkills()
 {
+    activeSkills.clear();
     DWORD listAddress = LineageGlobal::instance()->getSibBase() + 0x104;
     DWORD numTypes = 8;
     for(DWORD i = 1; i <= numTypes; ++i)
     {
-        DWORD firstAddress = *reinterpret_cast<LPDWORD>(listAddress - (numTypes - i) * 0x24);
+        DWORD firstAddress = *reinterpret_cast<LPDWORD>(listAddress + (numTypes - i) * 0x24);
         DWORD secondAddress = *reinterpret_cast<LPDWORD>(firstAddress + 0x4);
         DWORD thirdAddress = *reinterpret_cast<LPDWORD>(secondAddress + 0x88);
         DWORD skillsArray = *reinterpret_cast<LPDWORD>(thirdAddress + 0x28C);
-        DWORD numSkills = *reinterpret_cast<LPDWORD>(secondAddress + 0x290);
+        DWORD numSkills = *reinterpret_cast<LPDWORD>(thirdAddress + 0x290);
         for(DWORD j = 0; j < numSkills; ++j)
         {
             activeSkills.push_back(Skill(*reinterpret_cast<LPDWORD>(skillsArray + j * 0x4)));
@@ -49,15 +50,16 @@ std::vector<Skill> &Skill::getActiveSkills()
 
 std::vector<Skill> &Skill::getPassiveSkills()
 {
+    passiveSkills.clear();
     DWORD listAddress = LineageGlobal::instance()->getSibBase() + 0x14;
-    DWORD numTypes = 8;
+    DWORD numTypes = 6;
     for(DWORD i = 1; i <= numTypes; ++i)
     {
-        DWORD firstAddress = *reinterpret_cast<LPDWORD>(listAddress - (numTypes - i) * 0x24);
+        DWORD firstAddress = *reinterpret_cast<LPDWORD>(listAddress + (numTypes - i) * 0x24);
         DWORD secondAddress = *reinterpret_cast<LPDWORD>(firstAddress + 0x4);
         DWORD thirdAddress = *reinterpret_cast<LPDWORD>(secondAddress + 0x88);
         DWORD skillsArray = *reinterpret_cast<LPDWORD>(thirdAddress + 0x28C);
-        DWORD numSkills = *reinterpret_cast<LPDWORD>(secondAddress + 0x290);
+        DWORD numSkills = *reinterpret_cast<LPDWORD>(thirdAddress + 0x290);
         for(DWORD j = 0; j < numSkills; ++j)
         {
             passiveSkills.push_back(Skill(*reinterpret_cast<LPDWORD>(skillsArray + j * 0x4)));

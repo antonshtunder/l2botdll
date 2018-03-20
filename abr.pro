@@ -36,7 +36,10 @@ SOURCES += \
     lineage/inventoryitem.cpp \
     lineage/effectlist.cpp \
     ipc.cpp \
-    synchronization.cpp
+    synchronization.cpp \
+    lineage/l2utils/macro.cpp \
+    lineage/effect.cpp \
+    patches.cpp
 
 HEADERS += \
         abr.h \
@@ -52,7 +55,10 @@ HEADERS += \
     lineage/inventoryitem.h \
     lineage/effectlist.h \
     ipc.h \
-    synchronization.h
+    synchronization.h \
+    lineage/l2utils/macro.h \
+    lineage/effect.h \
+    patches.h
 
 unix {
     target.path = /usr/lib

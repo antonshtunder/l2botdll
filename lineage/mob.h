@@ -21,6 +21,8 @@ public:
     DWORD getMobTypeID() const;
     DWORD getTitleColor() const;
     DWORD getModelAddress() const;
+    DWORD getTargetModelAddress() const;
+    DWORD getAttackingAddress() const;
 
     void setAddress(DWORD newAddress);
 
