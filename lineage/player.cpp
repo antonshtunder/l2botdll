@@ -51,7 +51,17 @@ DWORD Player::getModelAddress()
 {
     DWORD base = reinterpret_cast<DWORD>(GetModuleHandleW(L"awesomium.DLL"));
     return *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(
-            *reinterpret_cast<LPDWORD>(base + 0x11C9AB8) + 0x34) + 0x24);
+                                          *reinterpret_cast<LPDWORD>(base + 0x11C9AB8) + 0x34) + 0x24);
+}
+
+DWORD Player::getClassId()
+{
+    return *reinterpret_cast<LPDWORD>(address() + 0x84);
+}
+
+DWORD Player::getLevel()
+{
+    return 0;
 }
 
 bool Player::isCasting()
@@ -72,7 +82,7 @@ Point3F *Player::getLoc()
     return reinterpret_cast<Point3F*>(0x1510B080);
 }
 
-void Player::makeRepresentation(CharacterRepresentation &charRep)
+bool Player::makeRepresentation(CharacterRepresentation &charRep)
 {
     memcpy(charRep.name, getName(), 60);
     charRep.x = getLoc()->x;
@@ -80,6 +90,8 @@ void Player::makeRepresentation(CharacterRepresentation &charRep)
     charRep.z = getLoc()->z;
     charRep.address = address();
     auto targetPointer = LineageGlobal::getPlayerTargetModelPointer();
+    if(reinterpret_cast<DWORD>(targetPointer) == 0)
+        return false;
     if(!dhl::validateAddress(reinterpret_cast<DWORD>(targetPointer)))
     {
         charRep.targetModelAddress = 0;
@@ -88,12 +100,19 @@ void Player::makeRepresentation(CharacterRepresentation &charRep)
     {
         charRep.targetModelAddress = *targetPointer;
     }
+    charRep.classID = getClassId();
+    charRep.level = getLevel();
     charRep.hp = getHP();
     charRep.maxHp = getMaxHP();
     charRep.mp = getMP();
     charRep.maxMp = getMaxMP();
     charRep.cp = getCP();
     charRep.maxCp = getMaxCP();
+}
+
+bool Player::isDead()
+{
+    return getHP() == 0;
 }
 
 DWORD Player::getHPMPCPBase()

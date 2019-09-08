@@ -23,6 +23,7 @@ public:
     DWORD getModelAddress() const;
     DWORD getTargetModelAddress() const;
     DWORD getAttackingAddress() const;
+    DWORD getClassId() const;
 
     void setAddress(DWORD newAddress);
 

@@ -4,6 +4,8 @@
 #include <Windows.h>
 #include <set>
 #include "synchronization.h"
+#include "winfuncs.h"
+#include <lineage/instances/item.h>
 
 using namespace std;
 using namespace dhl;
@@ -20,19 +22,21 @@ LineageGlobal *LineageGlobal::_instance = NULL;
 DWORD LineageGlobal::doActionOnInstanceFunction = 0;
 DWORD LineageGlobal::doActionOnInstanceECXArgument = 0;
 DWORD LineageGlobal::_moveToFunc = 0;
+DWORD LineageGlobal::_useItemFunc = 0;
 
 static DWORD _esp;
 
 LineageGlobal::LineageGlobal()
 {
+    DWORD funcBase = *reinterpret_cast<LPDWORD>(
+                *reinterpret_cast<LPDWORD>(CO1)+ 0x718A0);
     _arraysMutex = CreateMutex(NULL, FALSE, NULL);
-    _doAction = reinterpret_cast<FDoAction>(
-                    *reinterpret_cast<LPDWORD>(
-                        *reinterpret_cast<LPDWORD>(CO1)+ 0x718A0) + 0x512F60);
-    _useSkill = reinterpret_cast<FUseSkill>(
-                *reinterpret_cast<LPDWORD>(
-                    *reinterpret_cast<LPDWORD>(CO1)+ 0x718A0) + 0x49AAE0);
+    _mobsMutex = CreateMutex(NULL, FALSE, NULL);
+    _droppedItemsMutex = CreateMutex(NULL, FALSE, NULL);
+    _doAction = reinterpret_cast<FDoAction>(funcBase + 0x512F60);
+    _useSkill = reinterpret_cast<FUseSkill>(funcBase + 0x49AAE0);
     _moveToFunc = 0x203264F0;
+    _useItemFunc = funcBase + 0x4c56C0;
 
     LineageGlobal::doActionOnInstanceFunction = 0x20460950;
     LineageGlobal::doActionOnInstanceECXArgument = *reinterpret_cast<LPDWORD>(
@@ -40,6 +44,12 @@ LineageGlobal::LineageGlobal()
 
     BYTE skillInvBytes[] = {0x01, 0x00, 0x00, 0x00, 0x21, 0x00, 0x00, 0x00, 0x53, 0x00, 0x6B, 0x00, 0x69, 0x00, 0x6C, 0x00, 0x6C, 0x00, 0x00, 0x00};
     _sibBase = findByteSequence(skillInvBytes, sizeof(skillInvBytes), 0x15000000, 0x50000000);
+}
+
+LineageGlobal::~LineageGlobal()
+{
+    CloseHandle(_mobsMutex);
+    CloseHandle(_droppedItemsMutex);
 }
 
 void __declspec(naked) moveFuncTrampoline()
@@ -98,6 +108,8 @@ LineageGlobal *LineageGlobal::instance()
 LPDWORD LineageGlobal::getPlayerTargetModelPointer()
 {
     DWORD first = *reinterpret_cast<LPDWORD>(0x2185ea8c);
+    if(!checkAddress(first))
+        return reinterpret_cast<LPDWORD>(0);
     DWORD second = *reinterpret_cast<LPDWORD>(first + 0x3C);
     return reinterpret_cast<LPDWORD>(second + 0x450);
 }
@@ -110,16 +122,18 @@ bool LineageGlobal::isInGame()
 
 bool LineageGlobal::isDroppedItemPresent(DWORD address)
 {
-    auto items = getDroppedItems();
+    auto items = lockDroppedItems();
     //lockArrays();
     for(auto item : _droppedItems)
     {
         if(item.address() == address)
         {
             //unlockArrays();
+            unlockDroppedItems();
             return true;
         }
     }
+    unlockDroppedItems();
     //unlockArrays();
     return false;
 }
@@ -129,8 +143,9 @@ Player LineageGlobal::getPlayer()
     return Player();
 }
 
-std::vector<Mob> &LineageGlobal::getMobs()
+std::vector<Mob> &LineageGlobal::lockMobs()
 {
+    WaitForSingleObject(_mobsMutex, INFINITE);
     //lockArrays();
     set<DWORD> mobAddresses;
     _mobs.clear();
@@ -180,8 +195,9 @@ std::vector<Mob> &LineageGlobal::getMobs()
     return _mobs;
 }
 
-std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
+std::vector<DroppedItem> &LineageGlobal::lockDroppedItems()
 {
+    WaitForSingleObject(_droppedItemsMutex, INFINITE);
     //lockArrays();
     set<DWORD> dropppedItemAddresses;
     _droppedItems.clear();
@@ -229,6 +245,16 @@ std::vector<DroppedItem> &LineageGlobal::getDroppedItems()
     }
     //unlockArrays();
     return _droppedItems;
+}
+
+void LineageGlobal::unlockMobs()
+{
+    ReleaseMutex(_mobsMutex);
+}
+
+void LineageGlobal::unlockDroppedItems()
+{
+    ReleaseMutex(_droppedItemsMutex);
 }
 
 void LineageGlobal::attack()
@@ -327,9 +353,124 @@ void LineageGlobal::acceptAction()
     DWORD okButton = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(
                     *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(
                     *reinterpret_cast<LPDWORD>(getGUIBase() + 0x6C) + 0x8) + 0x4)) + 0x21C);
-    //alert(numToStr(okButton, 16));
-    uiElementAction(0x201, okButton);
-    uiElementAction(0x202, okButton);
+    pushButton(okButton);
+}
+
+void LineageGlobal::useItem(DWORD id)
+{
+    DWORD useItemArg = getGUIBase();
+    __asm
+    {
+        pushfd;
+        pushad;
+        mov _esp, esp;
+
+        mov ecx, useItemArg;
+        push id;
+        call _useItemFunc;
+
+        mov esp, _esp;
+        popad;
+        popfd;
+    }
+}
+
+void LineageGlobal::test(DWORD address)
+{
+    uiElementAction(WM_LBUTTONDOWN, 0x233f2080);
+    //pushButton(0x2413C300);
+}
+
+void LineageGlobal::pushButton(DWORD address)
+{
+    uiElementAction(WM_LBUTTONDOWN, address, 1);
+    uiElementAction(WM_LBUTTONUP, address, 0);
+}
+
+void LineageGlobal::exchangeItem(DWORD id)
+{
+    DWORD base = *reinterpret_cast<LPDWORD>(getSibBase() - 0x190);
+    DWORD itemsBase = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(base + 0x18) + 0x88);
+    DWORD itemsNum = *reinterpret_cast<LPDWORD>(itemsBase + 0x290);
+    if(id > itemsNum)
+        return;
+    LPDWORD choosenId = reinterpret_cast<LPDWORD>(itemsBase + 0x2CC);
+    *choosenId = id;
+
+    WORD buf[8] = {0};
+    buf[0] = 49;
+    DWORD inputBase = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(base + 0x2C) + 0x88);
+    *reinterpret_cast<LPDWORD>(inputBase + 0x218) = reinterpret_cast<DWORD>(buf);
+    *reinterpret_cast<LPDWORD>(inputBase + 0x21C) = 2;
+    *reinterpret_cast<LPDWORD>(inputBase + 0x220) = 2;
+
+
+    DWORD okButton = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(base + 0x24) + 0x88);
+    pushButton(okButton);
+    acceptExchange();
+    *reinterpret_cast<LPDWORD>(inputBase + 0x218) = 0;
+    *reinterpret_cast<LPDWORD>(inputBase + 0x21C) = 0;
+    *reinterpret_cast<LPDWORD>(inputBase + 0x220) = 0;
+}
+
+void LineageGlobal::acceptExchange()
+{
+    DWORD confirmButton = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(
+                            *reinterpret_cast<LPDWORD>(getSibBase() + 0xEE4) + 0x18) + 0x88);
+    pushButton(confirmButton);
+}
+
+void LineageGlobal::addItemToPurchaseList(DWORD id, DWORD amount)
+{
+    DWORD itemsBase = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(
+                    *reinterpret_cast<LPDWORD>(getSibBase() - 0xC34) + 0x1C) + 0x88);
+    DWORD itemsNum = *reinterpret_cast<LPDWORD>(itemsBase + 0x290);
+    LPDWORD itemsArray = *reinterpret_cast<LPDWORD*>(itemsBase + 0x28C);
+    for(DWORD i = 0; i < itemsNum; ++i)
+    {
+        DWORD itemAddress = itemsArray[i];
+        if(*reinterpret_cast<LPDWORD>(itemAddress + 0xFC) == id)
+        {
+            *reinterpret_cast<LPDWORD>(itemsBase + 0x2D0) = i;
+            uiElementAction(WM_LBUTTONDBLCLK, itemsBase);
+
+            DWORD inputAddress = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(
+                                *reinterpret_cast<LPDWORD>(getSibBase() + 0xEE4) + 0x8) + 0x88);
+            char *asciiNum = numToStr(amount, 10);
+            short buffer[16];
+            auto len = strlen(asciiNum);
+
+            DWORD inputButtonsBase = *reinterpret_cast<LPDWORD>(getSibBase() + 0xED8);
+            for(size_t i = 0; i < len; ++i)
+            {
+                DWORD inputBtnIndex = asciiNum[i] - '0';
+                if(inputBtnIndex == 0)
+                    inputBtnIndex = 9;
+                else
+                    --inputBtnIndex;
+                DWORD inputButtonAddress = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>
+                                            (inputButtonsBase + 0x4 * inputBtnIndex) + 0x88);
+                pushButton(inputButtonAddress);
+            }
+            /*buffer[len] = 0;
+            *reinterpret_cast<LPDWORD>(inputAddress + 0x270) = 4 + len * 7;
+            ++len; //to account for string terminator
+            *reinterpret_cast<LPDWORD>(inputAddress + 0x218) = reinterpret_cast<DWORD>(buffer);
+            *reinterpret_cast<LPDWORD>(inputAddress + 0x21C) = len;
+            *reinterpret_cast<LPDWORD>(inputAddress + 0x220) = len;
+            Sleep(5000);*/
+            acceptExchange();
+            return;
+        }
+    }
+
+}
+
+void LineageGlobal::confirmShopAction()
+{
+    DWORD buySellBtn = *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(
+                    *reinterpret_cast<LPDWORD>(getSibBase() - 0xC34) + 0x90) + 0x88);
+    pushButton(buySellBtn);
 }
 
 DWORD LineageGlobal::getNpcChatList()
@@ -340,25 +481,31 @@ DWORD LineageGlobal::getNpcChatList()
 LineageRepresentation LineageGlobal::getRepresentation()
 {
     LineageRepresentation representation;
+    if(!isInGame())
+        return representation;
     MobRepresentation mobRep;
-    DroppedItemRepresentation itemRep;
+    DroppedItemRepresentation droppedItemRep;
+    ItemRepresentation itemRep;
     SkillRepresentation skillRep;
     EffectRepresentation effectRep;
-    getPlayer().makeRepresentation(representation.character);
-    for(auto mob : getMobs())
+    if(!getPlayer().makeRepresentation(representation.character))
+        return representation;
+    for(auto mob : lockMobs())
     {
         if(!mob.isValid())
             continue;
         mob.makeRepresentation(mobRep);
         representation.mobs.push_back(mobRep);
     }
-    for(auto item : getDroppedItems())
+    unlockMobs();
+    for(auto item : lockDroppedItems())
     {
         if(!item.isValid())
             continue;
-        item.makeRepresentation(itemRep);
-        representation.droppedItems.push_back(itemRep);
+        item.makeRepresentation(droppedItemRep);
+        representation.droppedItems.push_back(droppedItemRep);
     }
+    unlockDroppedItems();
     for(auto skill : Skill::getActiveSkills())
     {
         skill.makeRepresentation(skillRep);
@@ -379,6 +526,11 @@ LineageRepresentation LineageGlobal::getRepresentation()
         effect.makeRepresentation(effectRep);
         representation.targetEffects.push_back(effectRep);
     }
+    for(auto item : Item::getInventoryItems())
+    {
+        item.makeRepresentation(itemRep);
+        representation.items.push_back(itemRep);
+    }
     return representation;
 }
 
@@ -386,6 +538,8 @@ DWORD LineageGlobal::getArraysAddress()
 {
     DWORD first = *reinterpret_cast<LPDWORD>(THREADSTACK0-0x00000F6C);
     DWORD second = *reinterpret_cast<LPDWORD>(first + 0x68);
+    if(!checkAddress(second))
+        return 0;
     return *reinterpret_cast<LPDWORD>(second + 0x224);
 }
 
@@ -393,6 +547,8 @@ DWORD LineageGlobal::getArraysNum()
 {
     DWORD first = *reinterpret_cast<LPDWORD>(THREADSTACK0-0x00000F6C);
     DWORD second = *reinterpret_cast<LPDWORD>(first + 0x68);
+    if(!checkAddress(second))
+        return 0;
     return *reinterpret_cast<LPDWORD>(second + 0x228);
 }
 
@@ -401,11 +557,17 @@ DWORD LineageGlobal::getADDR1()
     return *reinterpret_cast<LPDWORD>(0x208C53E8);
 }
 
-void LineageGlobal::uiElementAction(DWORD actionID, DWORD address)
+void LineageGlobal::uiElementAction(DWORD actionID, DWORD address, DWORD wParam, float xOffset, float yOffset)
 {
-    float elementX = *reinterpret_cast<float*>(address + 0xF4);
-    float elementY = *reinterpret_cast<float*>(address + 0xF8);
+    float elementX = *reinterpret_cast<float*>(address + 0xF4) + xOffset;
+    float elementY = *reinterpret_cast<float*>(address + 0xF8) + yOffset;
     DWORD lParam = 0;
+
+    outputDebug(numToStr(elementX, 10));
+    outputDebug(numToStr(elementY, 10));
+    outputDebug(numToStr(address, 16));
+    outputDebug(numToStr(actionID, 16));
+
     *reinterpret_cast<short*>(reinterpret_cast<LPBYTE>(&lParam) + 0) = static_cast<short>(elementX) + 1;
     *reinterpret_cast<short*>(reinterpret_cast<LPBYTE>(&lParam) + 2) = static_cast<short>(elementY) + 1;
     __asm
@@ -416,7 +578,7 @@ void LineageGlobal::uiElementAction(DWORD actionID, DWORD address)
 
         mov ecx, address;
         push lParam;
-        push 0;
+        push wParam;
         push actionID;
         mov eax, dword ptr ds:[ecx];
         mov eax, dword ptr ds:[eax + 0x6C];

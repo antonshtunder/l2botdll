@@ -6,8 +6,6 @@
 
 using namespace dhl;
 
-static bool patchesRemoved = false;
-
 static DWORD patchReg;
 static DWORD patchReg1;
 static DWORD patchReg2;
@@ -18,8 +16,8 @@ static DWORD returnAddress = PATCH_ADDRESS + 5;
 static BYTE *patchOriginalBytes;
 static DWORD patchOffset = 0;
 
-static DWORD PATCH_ADDRESS1 = 0;
-static DWORD returnAddress1 = 0;
+static DWORD PATCH_ADDRESS1 = 0x0;
+static DWORD returnAddress1 = 0x0;
 static BYTE *patchOriginalBytes1;
 
 #define PATCH_ADDRESS2 0x20273122
@@ -79,17 +77,21 @@ static DWORD pf1eArg;
     if(!checkAddress(pf1eArg))
 }*/
 
+DWORD getUnwantedThreadFunction()
+{
+    return *reinterpret_cast<LPDWORD>(0x10BF10A4) + 0x4A7B8;
+}
+
 void __declspec(naked) patchFunction1()
 {
     __asm
     {
-        mov dword ptr ds:[edx + 0x8], ecx;
-        mov dword ptr ds:[eax - 0x4], edx;
-        /**pushfd;
-        cmp eax, 0x7665445C;
-        je patchEnd;
-        patchEnd:
-        popfd;*/
+        call getUnwantedThreadFunction;
+        cmp eax, dword ptr ss:[esp + 0x10];
+        jne ok;
+        ret 0x20;
+        ok:
+        push 0x270;
         jmp returnAddress1;
     }
 }
@@ -175,6 +177,12 @@ void applyPatches()
     returnAddress += patchOffset;
     patchOriginalBytes = hookWithJump(PATCH_ADDRESS + patchOffset, reinterpret_cast<DWORD>(&patchFunction));
 
+    auto kernel32 = GetModuleHandleW(L"kernel32.dll");
+    auto createRemoteThreadExAddress = GetProcAddress(kernel32, "CreateRemoteThreadEx");
+    PATCH_ADDRESS1 = reinterpret_cast<DWORD>(createRemoteThreadExAddress);
+    returnAddress1 = PATCH_ADDRESS1 + 5;
+    patchOriginalBytes1 = hookWithJump(PATCH_ADDRESS1, reinterpret_cast<DWORD>(&patchFunction1));
+
     /*PATCH_ADDRESS1 = *reinterpret_cast<LPDWORD>(0x10BF10A4) + 0x7440;
     returnAddress1 = PATCH_ADDRESS1 + 6;
     patchOriginalBytes1 = hookWithJump(PATCH_ADDRESS1, reinterpret_cast<DWORD>(&patchFunction1));*/
@@ -197,16 +205,7 @@ void applyPatches()
 
 void removePatches()
 {
-    if(patchesRemoved)
-        return;
-
-    patchesRemoved = true;
     unhookWithJump(PATCH_ADDRESS + patchOffset, patchOriginalBytes);
-    //unhookWithJump(PATCH_ADDRESS1, patchOriginalBytes1);
-    lockMutex();
-    releaseMutex();
-    /*unhookWithJump(PATCH_ADDRESS1, patchOriginalBytes1);
-    unhookWithJump(PATCH_ADDRESS2, patchOriginalBytes2);
-    unhookWithJump(PATCH_ADDRESS3, patchOriginalBytes3);
-    unhookWithJump(PATCH_ADDRESS4, patchOriginalBytes4);*/
+    unhookWithJump(PATCH_ADDRESS1, patchOriginalBytes1);
+    Sleep(500);
 }

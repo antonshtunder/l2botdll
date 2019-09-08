@@ -20,7 +20,6 @@ public:
     static bool isValid(DWORD address);
     bool isValid();
 
-
     void makeRepresentation(DroppedItemRepresentation &mobRep);
 };
 

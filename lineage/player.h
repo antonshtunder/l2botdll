@@ -20,9 +20,13 @@ public:
     DWORD getCP();
     DWORD getMaxCP();
     DWORD getModelAddress();
+    DWORD getClassId();
+    DWORD getLevel();
     bool isCasting();
 
-    void makeRepresentation(CharacterRepresentation &charRep);
+    bool makeRepresentation(CharacterRepresentation &charRep);
+
+    bool isDead();
 
 private:
     DWORD getHPMPCPBase();

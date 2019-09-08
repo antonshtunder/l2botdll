@@ -8,6 +8,7 @@
 #include <ctime>
 #include <fstream>
 #include "patches.h"
+#include "winfuncs.h"
 
 #pragma comment(lib, "Kernel32.lib")
 
@@ -24,7 +25,9 @@ DLL_DEFAULT_ENTRY(entry);
 void entry()
 {
     LineageGlobal::instance();
+    initWinFuncs();
     srand(time(NULL));
+    killUnwantedThreads();
     initSynchronization();
     applyPatches();
     initPipes();
@@ -33,8 +36,24 @@ void entry()
 
 void dispatchCommandMessage(HANDLE pipe, BYTE *message)
 {
-    DWORD command = *reinterpret_cast<LPDWORD>(message);
     auto l2 = LineageGlobal::instance();
+    auto player = l2->getPlayer();
+    DWORD command = *reinterpret_cast<LPDWORD>(message);
+    if(command == l2ipc::Command::TEST)
+    {
+        l2ipc::sendReply(pipe, true);
+        return;
+    }
+
+    if(l2->isInGame())
+    {
+        if(player.isDead())
+        {
+            l2ipc::sendReply(pipe, false);
+            return;
+        }
+    }
+
 
     switch(command)
     {
@@ -71,6 +90,28 @@ void dispatchCommandMessage(HANDLE pipe, BYTE *message)
         break;
     case l2ipc::Command::SPEAK_TO:
         l2ipc::sendReply(pipe, speakToCommand(*reinterpret_cast<LPDWORD>(message + sizeof(l2ipc::Command))));
+        break;
+    case l2ipc::Command::USE_ITEM:
+        l2->useItem(*reinterpret_cast<LPDWORD>(message + sizeof(l2ipc::Command)));
+        l2ipc::sendReply(pipe, true);
+        break;
+    case l2ipc::Command::TEST_COMMAND:
+        l2ipc::sendReply(pipe, testCommand(message + sizeof(l2ipc::Command)));
+        break;
+    case l2ipc::Command::EXCHANGE_ITEM:
+        l2->exchangeItem(*reinterpret_cast<LPDWORD>(message + sizeof(l2ipc::Command)));
+        l2ipc::sendReply(pipe, true);
+        break;
+    case l2ipc::Command::ADD_ITEM_TO_SHOP_LIST:
+        l2->addItemToPurchaseList(*reinterpret_cast<LPDWORD>(message + sizeof(l2ipc::Command)),
+                                  *reinterpret_cast<LPDWORD>(message + sizeof(l2ipc::Command) + sizeof(DWORD)));
+        l2ipc::sendReply(pipe, true);
+        break;
+    case l2ipc::Command::CONFIRM_SHOP_ACTION:
+        l2->confirmShopAction();
+        l2ipc::sendReply(pipe, true);
+        break;
+    default:
         break;
     }
 }
@@ -198,16 +239,21 @@ void assist()
 
 bool moveToCommand(Point3F *message)
 {
-    LineageGlobal::instance()->moveTo(message->x, message->y, message->z);
+    auto l2 = LineageGlobal::instance();
+    if(l2->getPlayer().isDead())
+        return false;
+    l2->moveTo(message->x, message->y, message->z);
     return true;
 }
 
 void detach()
 {
+    closeSynchronizationHandles();
+    removePatches();
+
     auto dll = GetModuleHandle(L"abr.dll");
     if(dll != NULL)
     {
-        removePatches();
         FreeLibraryAndExitThread(dll, 1);
     }
 }
@@ -215,7 +261,7 @@ void detach()
 bool speakToCommand(DWORD npcId)
 {
     auto l2 = LineageGlobal::instance();
-    auto mobs = l2->getMobs();
+    auto mobs = l2->lockMobs();
     Mob speakToMob(0);
     for(auto mob : mobs)
     {
@@ -225,22 +271,24 @@ bool speakToCommand(DWORD npcId)
             break;
         }
     }
+    l2->unlockMobs();
 
     if(speakToMob.address() == 0)
+    {
         return false;
+    }
 
     auto listAddress = l2->getNpcChatList();
     auto listId = *reinterpret_cast<LPDWORD>(listAddress + 0x28C);
     l2->focusMob(speakToMob.address());
     Sleep(100);
-    l2->attack();
     auto time = getMilliCount();
     while(*reinterpret_cast<LPDWORD>(listAddress + 0x28C) == listId)
     {
-        Sleep(500);
         l2->attack();
         if(getMilliSpan(time) > 5000)
             return false;
+        Sleep(500);
     }
     return true;
 }
@@ -254,9 +302,16 @@ bool npcChatCommand(DWORD index)
     auto time = getMilliCount();
     while(*reinterpret_cast<LPDWORD>(listAddress + 0x28C) == listId)
     {
-        Sleep(500);
+        Sleep(10);
         if(getMilliSpan(time) > 1500)
             return false;
     }
+    return true;
+}
+
+bool testCommand(LPBYTE message)
+{
+    DWORD address = *reinterpret_cast<LPDWORD>(message);
+    LineageGlobal::instance()->test(address);
     return true;
 }

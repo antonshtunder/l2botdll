@@ -17,6 +17,7 @@ class LineageGlobal
     friend void moveFuncTrampoline();
 public:
     LineageGlobal();
+    ~LineageGlobal();
 
     static LineageGlobal *instance();
     static LPDWORD getPlayerTargetModelPointer();
@@ -25,8 +26,10 @@ public:
     bool isDroppedItemPresent(DWORD address);
 
     Player getPlayer();
-    std::vector<Mob> &getMobs();
-    std::vector<DroppedItem> &getDroppedItems();
+    std::vector<Mob> &lockMobs();
+    std::vector<DroppedItem> &lockDroppedItems();
+    void unlockMobs();
+    void unlockDroppedItems();
 
     void doAction(DWORD actionID);
     void attack();
@@ -37,6 +40,13 @@ public:
     void moveTo(float x, float y, float z);
     void npcChat(DWORD index);
     void acceptAction();
+    void useItem(DWORD id);
+    void test(DWORD address);
+    void pushButton(DWORD address);
+    void exchangeItem(DWORD index);
+    void acceptExchange();
+    void addItemToPurchaseList(DWORD id, DWORD amount);
+    void confirmShopAction();
 
     DWORD getNpcChatList();
 
@@ -51,12 +61,13 @@ private:
     DWORD getArraysNum();
     DWORD getADDR1();
 
-    void uiElementAction(DWORD actionID, DWORD uiElementAddress);
+    void uiElementAction(DWORD actionID, DWORD uiElementAddress, DWORD wParam = 0, float xOffset = 0.0f, float yOffset = 0.0f);
 
     static LineageGlobal *_instance;
     static DWORD doActionOnInstanceFunction;
     static DWORD doActionOnInstanceECXArgument;
     static DWORD _moveToFunc;
+    static DWORD _useItemFunc;
 
     HANDLE _arraysMutex;
 
@@ -68,6 +79,8 @@ private:
 
     FDoAction _doAction;
     FUseSkill _useSkill;
+
+    HANDLE _mobsMutex, _droppedItemsMutex;;
 };
 
 #endif // LINEAGEGLOBAL_H

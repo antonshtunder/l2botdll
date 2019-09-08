@@ -15,6 +15,7 @@ bool moveToCommand(Point3F *message);
 void assist();
 bool speakToCommand(DWORD npcId);
 bool npcChatCommand(DWORD index);
+bool testCommand(LPBYTE message);
 
 void detach();
 

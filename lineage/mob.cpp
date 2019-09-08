@@ -70,12 +70,20 @@ DWORD Mob::getModelAddress() const
 
 DWORD Mob::getTargetModelAddress() const
 {
-    return *reinterpret_cast<LPDWORD>(*reinterpret_cast<LPDWORD>(getModelAddress() + 0x3C) + 0x450);
+    DWORD first = *reinterpret_cast<LPDWORD>(getModelAddress() + 0x3C);
+    if(!checkAddress(first))
+        return 0;
+    return *reinterpret_cast<LPDWORD>(first + 0x450);
 }
 
 DWORD Mob::getAttackingAddress() const
 {
     return *reinterpret_cast<LPDWORD>(getModelAddress() + 0x74C);
+}
+
+DWORD Mob::getClassId() const
+{
+    return *reinterpret_cast<LPDWORD>(address() + 0x84);
 }
 
 void Mob::setAddress(DWORD newAddress)
@@ -137,6 +145,7 @@ void Mob::makeRepresentation(MobRepresentation &mobRep)
     mobRep.id = getID();
     mobRep.maxHp = getMaxHP();
     mobRep.typeID = getMobTypeID();
+    mobRep.classID = getClassId();
 
     if(isPet())
         mobRep.mobType = MobType::PET;

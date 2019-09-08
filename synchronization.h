@@ -6,4 +6,7 @@ void lockMutex();
 void sleepLockMutex();
 void releaseMutex();
 void sleepReleaseMutex();
+void closeSynchronizationHandles();
+void killUnwantedThreads();
+
 #endif // THREADS_H

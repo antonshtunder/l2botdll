@@ -39,7 +39,9 @@ SOURCES += \
     synchronization.cpp \
     lineage/l2utils/macro.cpp \
     lineage/effect.cpp \
-    patches.cpp
+    patches.cpp \
+    lineage/instances/item.cpp \
+    winfuncs.cpp
 
 HEADERS += \
         abr.h \
@@ -58,7 +60,9 @@ HEADERS += \
     synchronization.h \
     lineage/l2utils/macro.h \
     lineage/effect.h \
-    patches.h
+    patches.h \
+    lineage/instances/item.h \
+    winfuncs.h
 
 unix {
     target.path = /usr/lib
